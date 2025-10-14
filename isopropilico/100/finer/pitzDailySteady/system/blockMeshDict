@@ -39,7 +39,7 @@ blocks
 
     // (nx ny nz) -> Número de células nas direções X, Y e Z
     // Estes são os valores que você vai alterar para criar as 4 malhas
-    (320 16 16) // <-- Exemplo para uma malha "Coarse"
+    (51 14 14) // <-- Exemplo para uma malha "Coarse"
 
     // Define a distribuição das células. (1 1 1) significa uniforme.
     simpleGrading (1 1 1)
