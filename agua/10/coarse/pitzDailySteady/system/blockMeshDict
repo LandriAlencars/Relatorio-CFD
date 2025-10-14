@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  11                                    |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Fator de conversão. Como já definimos os vértices em metros, o fator é 1.
+convertToMeters 1;
+
+// Definição dos 8 vértices do nosso canal retangular
+// A ordem é: (x y z)
+vertices
+(
+    (0 0 0)             // Vértice 0
+    (0.02 0 0)          // Vértice 1
+    (0.02 0.0001 0)     // Vértice 2
+    (0 0.0001 0)        // Vértice 3
+    (0 0 0.0001)        // Vértice 4
+    (0.02 0 0.0001)     // Vértice 5
+    (0.02 0.0001 0.0001)// Vértice 6
+    (0 0.0001 0.0001)   // Vértice 7
+);
+
+// Definição do bloco e da discretização (número de células)
+blocks
+(
+    // Conecta os 8 vértices para formar o bloco hexaédrico
+    hex (0 1 2 3 4 5 6 7)
+
+    // (nx ny nz) -> Número de células nas direções X, Y e Z
+    // Estes são os valores que você vai alterar para criar as 4 malhas
+    (200 10 10) // <-- Exemplo para uma malha "Coarse"
+
+    // Define a distribuição das células. (1 1 1) significa uniforme.
+    simpleGrading (1 1 1)
+);
+
+// Definição das fronteiras (patches)
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)   // Face em x=0
+        );
+    }
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (1 2 6 5)   // Face em x=0.02
+        );
+    }
+    Walls
+    {
+        type wall;
+        faces
+        (
+            (0 1 5 4)   // Face inferior (y=0)
+            (3 7 6 2)   // Face superior (y=0.0001)
+            (0 3 2 1)   // Face traseira (z=0)
+            (4 5 6 7)   // Face frontal (z=0.0001)
+        );
+    }
+);
+
+// ************************************************************************* //
