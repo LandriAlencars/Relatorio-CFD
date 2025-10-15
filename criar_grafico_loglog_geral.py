@@ -25,7 +25,9 @@ try:
     
     # Prepara a figura
     plt.figure(figsize=(12, 9))
-    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.style.use('default')  # Corrigido
+    
+    resultados = []  # Para armazenar resultados
     
     # Processa cada caso
     for (fluid, flow_rate), group in df.groupby(['fluido', 'vazao_uL_min']):
@@ -38,51 +40,69 @@ try:
         print(f"Número de células: {n_cells}")
         print(f"Erros relativos (%): {errors}")
         
-        # Verifica se os erros estão diminuindo com refinamento
-        if len(errors) > 1:
-            error_reduction = errors[:-1] / errors[1:]
-            print(f"Redução do erro entre malhas: {error_reduction}")
-        
-        # Calcula logs
-        log_n = np.log(n_cells)
+        # Calcula h (tamanho característico) - CORREÇÃO IMPORTANTE
+        h = n_cells**(-1/3)  # h ∝ N^(-1/3)
+        log_h = np.log(h)
         log_err = np.log(errors)
         
-        print(f"Log(N): {log_n}")
+        print(f"Tamanho característico h: {h}")
+        print(f"Log(h): {log_h}")
         print(f"Log(Erro): {log_err}")
         
-        # Regressão linear
-        slope, intercept = np.polyfit(log_n, log_err, 1)
-        p = -slope
+        # Regressão linear: log(erro) vs log(h)
+        slope, intercept = np.polyfit(log_h, log_err, 1)
+        p = slope  # CORREÇÃO: p = slope quando usamos log(erro) vs log(h)
         
         print(f"Inclinação (slope): {slope:.4f}")
         print(f"Ordem de convergência (p): {p:.4f}")
         
         # Coeficiente de determinação R²
-        residuals = log_err - (slope * log_n + intercept)
+        residuals = log_err - (slope * log_h + intercept)
         ss_res = np.sum(residuals**2)
         ss_tot = np.sum((log_err - np.mean(log_err))**2)
         r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
         
         print(f"R²: {r_squared:.4f}")
         
-        # Plota
-        label = f'{fluid.capitalize()} Q={int(flow_rate)} (p={p:.2f})'
-        plt.plot(log_n, log_err, 'o-', markersize=8, label=label, alpha=0.8)
+        # Armazena resultados
+        resultados.append({
+            'fluido': fluid,
+            'vazao': flow_rate,
+            'ordem_convergencia': p,
+            'r_quadrado': r_squared
+        })
         
-        # Linha de tendência
-        trend = slope * log_n + intercept
-        plt.plot(log_n, trend, '--', alpha=0.5)
+        # Plota - CORRIGIDO: log(erro) vs log(N) para visualização
+        label = f'{fluid.capitalize()} Q={int(flow_rate)} (p={p:.2f})'
+        plt.plot(np.log(n_cells), log_err, 'o-', markersize=8, label=label, alpha=0.8)
+        
+        # Linha de tendência (opcional)
+        trend = slope * log_h + intercept
+        # Se quiser plotar no mesmo gráfico, converter de volta para log(N)
+        trend_in_logN = slope * (-1/3) * np.log(n_cells) + intercept
+        plt.plot(np.log(n_cells), trend_in_logN, '--', alpha=0.5)
     
-    # Finaliza gráfico
+    # Finaliza gráfico - CORRIGIDO rótulos
     plt.xlabel('Log(Número de Células)', fontsize=12)
     plt.ylabel('Log(Erro Relativo %)', fontsize=12)
-    plt.title('Gráfico de Convergência de Malha (Log-Log) para Todos os Casos', fontsize=14)
-    plt.legend(title='Caso (Ordem de Convergência, p)', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title('Convergência de Malha - Log(Erro) vs Log(N)', fontsize=14)
+    plt.legend(title='Caso (Ordem p)', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True, which="both", linestyle='--', alpha=0.7)
     plt.tight_layout(rect=[0, 0, 0.85, 1])
     
     plt.savefig(OUTPUT_FILENAME, dpi=300, bbox_inches='tight')
     print(f"\nGráfico salvo como '{OUTPUT_FILENAME}'")
+    
+    # Exibe resumo dos resultados
+    print("\n=== RESUMO DAS ORDENS DE CONVERGÊNCIA ===")
+    df_resultados = pd.DataFrame(resultados)
+    print(df_resultados.to_string(index=False))
+    
+    # Estatísticas
+    if len(resultados) > 0:
+        p_values = [r['ordem_convergencia'] for r in resultados]
+        print(f"\nOrdem de convergência média: {np.mean(p_values):.2f}")
+        print(f"Desvio padrão: {np.std(p_values):.2f}")
 
 except Exception as e:
     print(f"Erro: {e}")
